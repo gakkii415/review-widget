@@ -81,9 +81,9 @@ function render(){
  if(target){while(shown<ordered.length&&!$('review-'+target))appendBatch();const el=$('review-'+target);if(el){el.focus({preventScroll:true});el.scrollIntoView({block:'start'});}}
 }
 async function load(){
- if(busy)return;busy=true;$('retry').hidden=true;$('status').hidden=false;$('status').textContent='Loading Google reviews…';
+ if(busy)return;busy=true;$('retry').hidden=true;$('status').hidden=true;$('status').textContent='';
  try{
-  if(!config.endpoint){const response=await fetch('config.json',{cache:'no-cache'});if(!response.ok)throw Error('Configuration unavailable');config=await response.json();}
+  if(!config.endpoint){const response=await fetch('config.json',{cache:'force-cache'});if(!response.ok)throw Error('Configuration unavailable');config=await response.json();}
   data=await readData(config.endpoint);if(!data?.ok)throw Error('Data unavailable');
   ordered=selectReviews(data.reviews,config.pinnedReviewIds||[]);render();document.body.dataset.ready='true';
  }catch(error){$('status').hidden=false;$('status').textContent='Reviews could not be loaded. Please try again or view them on Google.';$('retry').hidden=false;document.body.dataset.ready='error';}
