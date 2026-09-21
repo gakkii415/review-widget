@@ -1,0 +1,66 @@
+name: Refresh daily review snapshot
+on:
+  schedule:
+    # 18:15 UTC = 03:15 JST. Once daily is enough for review freshness.
+    - cron: "15 18 * * *"
+  workflow_dispatch:
+permissions:
+  contents: write
+  pages: write
+concurrency:
+  group: review-widget-snapshot
+  cancel-in-progress: false
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Fetch official review snapshot
+        run: |
+          node --input-type=module <<'NODE'
+          import fs from 'node:fs';
+          const cfg=JSON.parse(fs.readFileSync('config.json','utf8'));
+          let data,last;
+          for(let i=0;i<5;i++){
+            try{
+              const r=await fetch(cfg.endpoint,{signal:AbortSignal.timeout(45000)});
+              if(!r.ok)throw Error('HTTP '+r.status);
+              data=await r.json();
+              if(!data?.ok||!Array.isArray(data.reviews))throw Error('Invalid snapshot');
+              break;
+            }catch(e){last=e;await new Promise(r=>setTimeout(r,3000));}
+          }
+          if(!data)throw last;
+          data.snapshotUpdatedAt=new Date().toISOString();
+          fs.writeFileSync('reviews.json',JSON.stringify(data));
+          console.log(JSON.stringify({reviews:data.reviews.length,total:data.totalReviewCount,rating:data.averageRating}));
+          NODE
+      - name: Commit only when snapshot changed
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add reviews.json
+          if ! git diff --cached --quiet; then
+            git commit -m 'Refresh daily Google review snapshot [skip widget build]'
+            git pull --rebase origin main
+            git push origin HEAD:main
+          fi
+      - name: Publish Pages
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          gh api --method POST "repos/$GITHUB_REPOSITORY/pages/builds" >/dev/null
+          for attempt in $(seq 1 30); do
+            status="$(gh api "repos/$GITHUB_REPOSITORY/pages/builds/latest" --jq .status)"
+            [ "$status" = built ] && exit 0
+            [ "$status" = errored ] && exit 1
+            sleep 5
+          done
+          exit 1
