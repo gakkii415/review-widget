@@ -83,14 +83,22 @@ function render(){
 async function load(){
  if(busy)return;busy=true;$('retry').hidden=true;$('status').hidden=true;$('status').textContent='';
  try{
-  if(!config.endpoint){const response=await fetch('config.json',{cache:'force-cache'});if(!response.ok)throw Error('Configuration unavailable');config=await response.json();}
-  data=await readData(config.endpoint);if(!data?.ok)throw Error('Data unavailable');
-  ordered=selectReviews(data.reviews,config.pinnedReviewIds||[]);render();document.body.dataset.ready='true';
- }catch(error){$('status').hidden=false;$('status').textContent='Reviews could not be loaded. Please try again or view them on Google.';$('retry').hidden=false;document.body.dataset.ready='error';}
+  // Static daily snapshot is served from the same Pages origin: no GAS request on normal page loads.
+  let response=await fetch('reviews.json',{cache:'force-cache'});
+  if(!response.ok)throw Error('Snapshot unavailable');
+  data=await response.json();if(!data?.ok)throw Error('Snapshot invalid');
+  ordered=selectReviews(data.reviews);render();document.body.dataset.ready='true';
+ }catch(error){
+  // GAS is an availability fallback only; normal visitors should never need it.
+  try{
+   if(!config.endpoint){const response=await fetch('config.json',{cache:'force-cache'});if(!response.ok)throw Error('Configuration unavailable');config=await response.json();}
+   data=await readData(config.endpoint);if(!data?.ok)throw Error('Data unavailable');ordered=selectReviews(data.reviews);render();document.body.dataset.ready='true';
+  }catch(_){$('status').hidden=false;$('status').textContent='Reviews could not be loaded. Please try again or view them on Google.';$('retry').hidden=false;document.body.dataset.ready='error';}
+ }
  finally{busy=false;}
 }
 $('retry').addEventListener('click',load);
 $('more').addEventListener('click',()=>{const before=shown;appendBatch();const first=document.querySelectorAll('.review')[before];if(first)first.focus({preventScroll:true});});
-$('sort').addEventListener('change',()=>{ordered=selectReviews(data.reviews,config.pinnedReviewIds||[]);if($('sort').value==='newest')ordered.sort(newest);$('reviews').replaceChildren();shown=0;appendBatch();});
+$('sort').addEventListener('change',()=>{ordered=selectReviews(data.reviews);$('reviews').replaceChildren();shown=0;appendBatch();});
 let resizeTimer;window.addEventListener('resize',()=>{if(embedded&&data){clearTimeout(resizeTimer);resizeTimer=setTimeout(renderEmbed,100);}});
 load();
