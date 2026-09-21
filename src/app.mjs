@@ -76,7 +76,7 @@ function render(){
  document.body.dataset.eligible=String(ordered.length);
  if(!ordered.length){$('status').textContent='View all customer reviews on Google.';$('status').hidden=false;$('more').hidden=true;$('moreLink').hidden=true;return;}
  if(embedded){renderEmbed();return;}
- $('controls').hidden=false;$('reviews').replaceChildren();shown=0;appendBatch();
+ $('reviews').replaceChildren();shown=0;appendBatch();
  const target=new URLSearchParams(location.search).get('review');
  if(target){while(shown<ordered.length&&!$('review-'+target))appendBatch();const el=$('review-'+target);if(el){el.focus({preventScroll:true});el.scrollIntoView({block:'start'});}}
 }
@@ -99,6 +99,5 @@ async function load(){
 }
 $('retry').addEventListener('click',load);
 $('more').addEventListener('click',()=>{const before=shown;appendBatch();const first=document.querySelectorAll('.review')[before];if(first)first.focus({preventScroll:true});});
-$('sort').addEventListener('change',()=>{ordered=selectReviews(data.reviews);$('reviews').replaceChildren();shown=0;appendBatch();});
 let resizeTimer;window.addEventListener('resize',()=>{if(embedded&&data){clearTimeout(resizeTimer);resizeTimer=setTimeout(renderEmbed,100);}});
 load();
