@@ -5,6 +5,9 @@
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="robots" content="noindex,follow">
 <title>Customer reviews</title>
+<link rel="preconnect" href="https://script.google.com">
+<link rel="preconnect" href="https://script.googleusercontent.com">
+<link rel="preconnect" href="https://lh3.googleusercontent.com">
 <link rel="stylesheet" href="style.css">
 <script>if(new URLSearchParams(location.search).has('embed'))document.documentElement.classList.add('embed');if(window.self!==window.top)document.documentElement.classList.add('framed');</script>
 <script src="widget.js" defer></script>
@@ -19,7 +22,7 @@
 </a>
 <p id="selectionNote" class="note" hidden>Selected 5-star reviews, originally written in English.</p>
 <div id="controls" class="controls" hidden><label for="sort">Sort by</label> <select id="sort"><option value="featured">Featured</option><option value="newest">Newest</option></select></div>
-<p id="status" class="status" role="status">Loading Google reviews…</p>
+<p id="status" class="status" role="status"></p>
 <section id="reviews" class="reviews" aria-label="Customer reviews" aria-live="polite"></section>
 <div id="actions" class="actions">
  <a id="moreLink" class="button" hidden target="_blank" rel="noopener noreferrer">View More &gt;</a>
