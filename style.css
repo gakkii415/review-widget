@@ -10,3 +10,15 @@ main{max-width:720px;padding:20px 14px 14px;margin:auto}.summary{display:flex;fl
 .embed .review:has(.photos)>.photos{grid-column:2;grid-row:3/span 2;margin:0;display:block}
 .embed .photos a:not(:first-child){display:none}
 .embed .photos img{width:72px;height:72px;display:block}
+
+/* v3: mobile embeds must always keep reviews visible; desktop review photos must be useful. */
+.embed .review:has(.photos){grid-template-columns:minmax(0,1fr) clamp(128px,24vw,180px);column-gap:18px}
+.embed .photos img{width:clamp(128px,24vw,180px);height:clamp(128px,24vw,180px)}
+@media(max-width:699px){
+ .embed .review:has(.photos){grid-template-columns:minmax(0,1fr) 92px;column-gap:10px}
+ .embed .photos img{width:92px;height:92px}
+}
+@media(min-width:700px){
+ .photos{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+ .photos img{width:100%;height:auto;aspect-ratio:1/1;object-fit:cover;border-radius:12px}
+}
