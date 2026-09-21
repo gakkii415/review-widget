@@ -18,6 +18,8 @@ export function isEnglish(value) {
   const foreign=words.filter(x=>foreignWords.has(x)).length;
   if(foreign>=2 && foreign>=en/2) return false;
   if(text.length<80) {
+    // Shared single-word praise cannot establish the original language.
+    if(words.length===1 && ['excellent','perfect','super','fantastic'].includes(words[0])) return false;
     if(/^(?:(?:absolutely |really |very )?(?:great|amazing|excellent|wonderful|perfect|beautiful|fantastic|lovely)(?: tattoos?| work| experience| service| artist| design| studio)?[.!\s]*)+$/i.test(text)) return true;
     if(en<2) return false;
   }
