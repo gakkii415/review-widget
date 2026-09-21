@@ -36,13 +36,17 @@ function renderEmbed(){
  $('reviews').replaceChildren();shown=0;$('status').hidden=true;
  $('more').hidden=true;$('moreLink').hidden=false;$('moreLink').href=reviewLink();
  const height=framed?window.innerHeight:1140;
- for(let i=0;i<Math.min(3,ordered.length);i++){$('reviews').append(card(ordered[i]));shown++;}
+ // Never remove every review just because Google Sites gave the iframe a short mobile height.
+ // Always keep at least one useful review visible, then fit up to five when space permits.
+ const minimum=Math.min(ordered.length,window.innerWidth<=480?1:3);
+ for(let i=0;i<minimum;i++){$('reviews').append(card(ordered[i]));shown++;}
  let lines=6;document.documentElement.style.setProperty('--lines',lines);
  while($('widget').scrollHeight>height-6&&lines>2)document.documentElement.style.setProperty('--lines',--lines);
- if($('widget').scrollHeight>height-6&&framed){
-  $('reviews').replaceChildren();shown=0;$('status').textContent='Read customer reviews on the full page.';$('status').hidden=false;
- }else{
-  while(shown<ordered.length&&shown<5){const el=card(ordered[shown]);$('reviews').append(el);if($('widget').scrollHeight>height-6){el.remove();break;}shown++;}
+ while(shown>1&&$('widget').scrollHeight>height-6){$('reviews').lastElementChild.remove();shown--;}
+ while(shown<ordered.length&&shown<5){
+  const el=card(ordered[shown]);$('reviews').append(el);
+  if($('widget').scrollHeight>height-6){el.remove();break;}
+  shown++;
  }
  for(const el of document.querySelectorAll('.review')){const text=el.querySelector('.text');el.querySelector('.read-full').hidden=text.scrollHeight<=text.clientHeight+1;}
  document.body.dataset.shown=String(shown);
