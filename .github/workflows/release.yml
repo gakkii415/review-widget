@@ -57,7 +57,17 @@ jobs:
       - name: Verify published page
         env:
           BASE_URL: ${{ steps.deployment.outputs.page_url }}
-        run: npm run test:browser
+        run: |
+          for attempt in 1 2 3; do
+            npm run test:browser && exit 0
+            sleep 10
+          done
+          exit 1
+      - name: Report Pages source configuration
+        if: always()
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh api "repos/$GITHUB_REPOSITORY/pages" --jq '{build_type,html_url}'
       - name: Delete deployment packages and previous review screenshots
         if: always()
         env:

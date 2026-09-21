@@ -32,9 +32,10 @@ export function assemble(template,payload,css,js) {
   }
   if(!/<meta name="robots" content="noindex, nofollow, noimageindex">/.test(template))throw Error('noindex required');
   if(/<\/script/i.test(js))throw Error('Unsafe bundled script terminator');
-  return template.replace('<link rel="stylesheet" href="style.css">','<style>'+css+'</style>')
-    .replace('<!-- REVIEW_DATA -->','<script id="review-data" type="application/json">'+safeJson(payload)+'</script>')
-    .replace('<!-- REVIEW_APP -->','<script>'+js+'</script>');
+  // Functional replacements preserve dollar signs and replacement metacharacters verbatim.
+  return template.replace('<link rel="stylesheet" href="style.css">',()=>'<style>'+css+'</style>')
+    .replace('<!-- REVIEW_DATA -->',()=>'<script id="review-data" type="application/json">'+safeJson(payload)+'</script>')
+    .replace('<!-- REVIEW_APP -->',()=>'<script>'+js+'</script>');
 }
 async function main() {
   const config=JSON.parse(await fs.readFile(path.join(root,'config.json'),'utf8'));
