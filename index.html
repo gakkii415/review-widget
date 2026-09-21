@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex,follow">
+<title>Customer reviews</title>
+<link rel="stylesheet" href="style.css">
+<script>if(new URLSearchParams(location.search).has('embed'))document.documentElement.classList.add('embed');if(window.self!==window.top)document.documentElement.classList.add('framed');</script>
+<script src="widget.js" defer></script>
+</head>
+<body>
+<main id="widget">
+<h1 class="sr-only">Customer reviews</h1>
+<a id="summary" class="summary" hidden target="_blank" rel="noopener noreferrer">
+ <strong id="rating" class="rating"></strong>
+ <span id="aggregateStars" class="stars" role="img"><span class="stars-fill">★★★★★</span><span aria-hidden="true">★★★★★</span></span>
+ <span class="count"><span id="total"></span> reviews on <img src="https://www.gstatic.com/images/branding/googlelogo/2x/googlelogo_color_92x30dp.png" width="74" height="24" alt="Google"></span>
+</a>
+<p id="selectionNote" class="note" hidden>Selected 5-star reviews, originally written in English.</p>
+<div id="controls" class="controls" hidden><label for="sort">Sort by</label> <select id="sort"><option value="featured">Featured</option><option value="newest">Newest</option></select></div>
+<p id="status" class="status" role="status">Loading Google reviews…</p>
+<section id="reviews" class="reviews" aria-label="Customer reviews" aria-live="polite"></section>
+<div id="actions" class="actions">
+ <a id="moreLink" class="button" hidden target="_blank" rel="noopener noreferrer">View More &gt;</a>
+ <button id="more" class="button" type="button" hidden>View More &gt;</button>
+ <button id="retry" class="button" type="button" hidden>Try again</button>
+</div>
+<footer><a id="googleLink" target="_blank" rel="noopener noreferrer" href="https://www.google.com/maps">View on Google</a><a id="backLink" hidden>Back to website</a><span class="version">v1</span></footer>
+</main>
+<noscript><p>Enable JavaScript to view customer reviews.</p></noscript>
+</body></html>

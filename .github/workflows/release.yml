@@ -1,0 +1,74 @@
+name: Build, verify and publish review widget
+on:
+  push:
+    branches: [main]
+    paths: ["src/**", "tests/**", "index.html", "style.css", "config.json", "package.json", "VERSION", ".github/workflows/release.yml"]
+  workflow_dispatch:
+permissions:
+  contents: write
+  pages: write
+concurrency:
+  group: review-widget-release
+  cancel-in-progress: false
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Install pinned dependencies
+        run: |
+          if [ -f package-lock.json ]; then npm ci; else npm install; fi
+      - run: npm test
+      - run: npm run build
+      - name: Preserve dependency attribution
+        run: |
+          printf 'Third-party licenses\n\n' > THIRD_PARTY_LICENSES.txt
+          for p in franc-min trigram-utils n-gram; do
+            if [ -f "node_modules/$p/license" ]; then printf '\n%s\n' "$p" >> THIRD_PARTY_LICENSES.txt; cat "node_modules/$p/license" >> THIRD_PARTY_LICENSES.txt; fi
+          done
+      - name: Install test browser
+        run: npx playwright install --with-deps chromium
+      - name: Verify real review display and embed sizing
+        run: npm run test:browser
+      - name: Save screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: review-widget-screen-check
+          path: ${{ runner.temp }}/reviews-*.png
+          retention-days: 3
+          if-no-files-found: ignore
+      - name: Commit tested static bundle
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add widget.js package-lock.json THIRD_PARTY_LICENSES.txt
+          if ! git diff --cached --quiet; then
+            git commit -m 'Build tested review widget bundle [skip widget build]'
+            git pull --rebase origin main
+            git push origin HEAD:main
+          fi
+      - name: Request Pages build and wait
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          gh api --method POST "repos/$GITHUB_REPOSITORY/pages/builds" >/dev/null
+          for attempt in $(seq 1 30); do
+            status="$(gh api "repos/$GITHUB_REPOSITORY/pages/builds/latest" --jq .status)"
+            if [ "$status" = built ]; then break; fi
+            if [ "$status" = errored ]; then echo 'Pages build failed'; exit 1; fi
+            sleep 5
+          done
+          test "$status" = built
+          gh api "repos/$GITHUB_REPOSITORY/pages" --jq '.html_url' > "$RUNNER_TEMP/pages-url"
+          printf 'PAGES_URL='; cat "$RUNNER_TEMP/pages-url"
+      - name: Verify published application
+        run: |
+          BASE_URL="$(cat "$RUNNER_TEMP/pages-url")" npm run test:browser
