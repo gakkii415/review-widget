@@ -64,6 +64,7 @@ try{
  await page.waitForFunction(()=>['true','unavailable'].includes(document.body.dataset.ready),{},{timeout:15000});
  assert.equal(await page.locator('.version').innerText(),expectedVersion);
  assert.match(await page.locator('meta[name="robots"]').getAttribute('content'),/noindex/);
+ assert.equal(await page.locator('#googleLink').isVisible(),false,'View on Google must stay hidden');
  const html=await response.text();
  const source=JSON.parse(html.match(/<script id="review-data" type="application\/json">([\s\S]*?)<\/script>/)[1]);
  const available=await page.locator('body').getAttribute('data-ready')==='true';
