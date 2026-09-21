@@ -2,7 +2,7 @@ name: Build, verify and publish review widget
 on:
   push:
     branches: [main]
-    paths: ["src/**", "tests/**", "index.html", "style.css", "config.json", "package.json", "VERSION", ".github/workflows/release.yml"]
+    paths: ["src/**", "tests/**", "index.html", "style.css", "config.json", "reviews.json", "package.json", "VERSION", ".github/workflows/release.yml"]
   workflow_dispatch:
 permissions:
   contents: write
