@@ -38,11 +38,11 @@ function renderEmbed(){
  const height=framed?window.innerHeight:1140;
  // Never remove every review just because Google Sites gave the iframe a short mobile height.
  // Always keep at least one useful review visible, then fit up to five when space permits.
- const minimum=Math.min(ordered.length,window.innerWidth<=480?1:3);
+ const minimum=Math.min(ordered.length,3);
  for(let i=0;i<minimum;i++){$('reviews').append(card(ordered[i]));shown++;}
  let lines=6;document.documentElement.style.setProperty('--lines',lines);
  while($('widget').scrollHeight>height-6&&lines>2)document.documentElement.style.setProperty('--lines',--lines);
- while(shown>1&&$('widget').scrollHeight>height-6){$('reviews').lastElementChild.remove();shown--;}
+ // Home embeds always keep the first three reviews. Never remove them to fit a short iframe.
  while(shown<ordered.length&&shown<5){
   const el=card(ordered[shown]);$('reviews').append(el);
   if($('widget').scrollHeight>height-6){el.remove();break;}
