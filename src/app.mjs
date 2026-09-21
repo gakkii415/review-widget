@@ -1,3 +1,4 @@
+import {reviewExcerpt} from './excerpt.mjs';
 const $=id=>document.getElementById(id);
 const embedded=new URLSearchParams(location.search).has('embed');
 const framed=window.self!==window.top;
@@ -16,10 +17,11 @@ function card(review){
  const date=new Date(review.createTime);
  if(Number.isFinite(date.getTime())){const t=make('time','date',new Intl.DateTimeFormat('en',{month:'short',day:'numeric',year:'numeric'}).format(date));t.dateTime=date.toISOString();info.append(t);}
  author.append(info);el.append(author);
- const stars=make('span','review-stars','★★★★★');stars.setAttribute('role','img');stars.setAttribute('aria-label','5 out of 5 stars');el.append(stars,make('p','text',review.text));
- if(embedded){const a=make('a','read-full','Read full review');a.href=reviewLink(review.id);a.target='_blank';a.rel='noopener noreferrer';el.append(a);}
- const photos=(Array.isArray(review.photos)?review.photos:[]).map(httpsUrl).filter(Boolean).slice(0,4);
- if(photos.length){const grid=make('div','photos');for(const url of photos){const a=make('a');a.href=url;a.target='_blank';a.rel='noopener noreferrer';const img=make('img');img.src=url;img.alt='Photo attached to this review';img.loading='lazy';img.width=120;img.height=120;a.append(img);grid.append(a);}el.append(grid);}
+ const preview=embedded?reviewExcerpt(review.text):{text:review.text,truncated:false};
+ const stars=make('span','review-stars','★★★★★');stars.setAttribute('role','img');stars.setAttribute('aria-label','5 out of 5 stars');el.append(stars,make('p','text',preview.text));
+ if(preview.truncated){const a=make('a','read-full','Read full review');a.href=reviewLink(review.id);a.target='_blank';a.rel='noopener noreferrer';a.setAttribute('aria-label','Read full review by '+(review.reviewerName||'Google user'));el.append(a);}
+ const photos=(Array.isArray(review.photos)?review.photos:[]).map(httpsUrl).filter(Boolean).slice(0,embedded?1:4);
+ if(photos.length){const grid=make('div','photos');for(const url of photos){const a=make('a');a.href=url;a.target='_blank';a.rel='noopener noreferrer';a.setAttribute('aria-label','Open review photo');const img=make('img');img.src=url;img.alt='Photo attached to this review';img.loading='lazy';img.width=180;img.height=180;a.append(img);grid.append(a);}el.append(grid);}
  return el;
 }
 function appendBatch(){
@@ -32,30 +34,31 @@ function appendBatch(){
  $('more').hidden=shown>=ordered.length;
  document.body.dataset.shown=String(shown);
 }
+function measureEmbed(){
+ if(!embedded)return;
+ const required=Math.ceil($('widget').getBoundingClientRect().height);
+ document.body.dataset.requiredHeight=String(required);
+ document.body.dataset.embedOverflow=String(framed&&required>window.innerHeight+1);
+}
 function renderEmbed(){
  $('reviews').replaceChildren();shown=0;$('status').hidden=true;
  $('more').hidden=true;$('moreLink').hidden=false;$('moreLink').href=reviewLink();
- const height=framed?window.innerHeight:1140;
- // Never remove every review just because Google Sites gave the iframe a short mobile height.
- // Always keep at least one useful review visible, then fit up to five when space permits.
+ // Height can limit EXTRA cards, never the first three or their readable text.
  const minimum=Math.min(ordered.length,3);
  for(let i=0;i<minimum;i++){$('reviews').append(card(ordered[i]));shown++;}
- let lines=6;document.documentElement.style.setProperty('--lines',lines);
- while($('widget').scrollHeight>height-6&&lines>2)document.documentElement.style.setProperty('--lines',--lines);
- // Home embeds always keep the first three reviews. Never remove them to fit a short iframe.
+ const budget=framed?window.innerHeight:1600;
  while(shown<ordered.length&&shown<5){
   const el=card(ordered[shown]);$('reviews').append(el);
-  if($('widget').scrollHeight>height-6){el.remove();break;}
+  if($('widget').getBoundingClientRect().height>budget-8){el.remove();break;}
   shown++;
  }
- for(const el of document.querySelectorAll('.review')){const text=el.querySelector('.text');el.querySelector('.read-full').hidden=text.scrollHeight<=text.clientHeight+1;}
- document.body.dataset.shown=String(shown);
+ document.body.dataset.shown=String(shown);measureEmbed();
 }
 function unavailable(){
  $('reviews').replaceChildren();$('summary').hidden=true;$('selectionNote').hidden=true;
  $('more').hidden=true;$('moreLink').hidden=true;$('status').hidden=false;
  $('status').textContent='Please view the latest customer reviews on Google.';
- document.body.dataset.ready='unavailable';ordered=[];data=null;
+ document.body.dataset.ready='unavailable';ordered=[];data=null;measureEmbed();
 }
 function render(){
  $('summary').hidden=false;$('summary').href=mapsUrl(data.googleMapsUrl);
@@ -76,7 +79,6 @@ function boot(){
   const payloadNode=$('review-data');
   data=JSON.parse(payloadNode.textContent);payloadNode.remove();
   if(!data?.ok||!Array.isArray(data.reviews)||!Number.isFinite(data.averageRating)||!Number.isInteger(data.totalReviewCount)||!Number.isFinite(Date.parse(data.expiresAt))||Date.now()>=Date.parse(data.expiresAt))throw Error('Unavailable');
-  // English/star filtering and chronological sorting were completed during the daily build.
   ordered=data.reviews;render();document.body.dataset.ready='true';
  }catch{unavailable();}
 }
@@ -85,3 +87,4 @@ let resizeTimer;window.addEventListener('resize',()=>{if(embedded&&data){clearTi
 function checkExpiry(){if(data&&Date.now()>=Date.parse(data.expiresAt))unavailable();}
 window.addEventListener('pageshow',checkExpiry);document.addEventListener('visibilitychange',checkExpiry);setInterval(checkExpiry,60000);
 boot();
+if(embedded&&typeof ResizeObserver==='function')new ResizeObserver(measureEmbed).observe($('widget'));
