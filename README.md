@@ -32,4 +32,6 @@ Google Sitesの外枠が短い場合、レビューを隠す代わりにフレ�
 
 `npm ci`、`npm test`、`npm run build`。`npm run test:browser`は`dist/`と公開URLで検証します。短い600〜700pxのフレームでも本文を削らず3件目とボタンへ到達できること、長文・写真付き・高さ変更を確認します。配信用テンプレートは`templates/index.html`です。`config.json`はビルド時の取得先だけに使用し、配信しません。
 
+同じテンプレート・CSS・JavaScriptから複数の埋め込み先を生成し、店舗ごとの差分は取得先設定だけに限定します。`/` と `/spa/` はビルド時にUIコードが一致していることを検査するため、片方だけ表示ロジックがずれる構成にはしません。承認待ちの取得先はデータなし画面として公開できます。
+
 公開は`.github/workflows/release.yml`のGitHub Pages artifact方式です。GitHub PagesのSourceにはGitHub Actionsを指定します。旧来のブランチ公開用`index.html`/`widget.js`は新しい配信物には含めません。表示バージョンの正本は`VERSION`で、配信用テンプレートにも同じ`vN`を埋め込みます。埋め込みURLは同じ`?embed=1`のまま使用します。

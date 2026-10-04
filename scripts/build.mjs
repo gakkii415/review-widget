@@ -37,9 +37,14 @@ export function assemble(template,payload,css,js) {
     .replace('<!-- REVIEW_DATA -->',()=>'<script id="review-data" type="application/json">'+safeJson(payload)+'</script>')
     .replace('<!-- REVIEW_APP -->',()=>'<script>'+js+'</script>');
 }
-async function main() {
-  const config=JSON.parse(await fs.readFile(path.join(root,'config.json'),'utf8'));
-  const endpoint=new URL(config.endpoint);
+async function fetchPayload(configFile) {
+  const config=JSON.parse(await fs.readFile(path.join(root,configFile),'utf8'));
+  const rawEndpoint=String(config.endpoint||'').trim();
+  if(!rawEndpoint) {
+    if(config.pending===true) return {ok:false,reviews:[],snapshotUpdatedAt:new Date().toISOString()};
+    throw Error('Missing endpoint');
+  }
+  const endpoint=new URL(rawEndpoint);
   if(endpoint.origin!=='https://script.google.com'||!/^\/macros\/s\/[\w-]+\/exec$/.test(endpoint.pathname))throw Error('Invalid endpoint');
   let payload;
   for(let attempt=0;attempt<4;attempt++) {
@@ -49,17 +54,35 @@ async function main() {
       payload=snapshot(await response.json());break;
     }catch{if(attempt<3)await new Promise(resolve=>setTimeout(resolve,3000));}
   }
-  // Prefer an empty, useful fallback over republishing a removed review indefinitely.
   if(!payload){payload={ok:false,reviews:[],snapshotUpdatedAt:new Date().toISOString()};console.warn('::warning::Review source unavailable; publishing a data-free fallback.');}
+  return payload;
+}
+function withoutPayload(html) {
+  return html.replace(/<script id="review-data" type="application\/json">[\s\S]*?<\/script>/,
+    '<script id="review-data" type="application/json">__PAYLOAD__</script>');
+}
+async function main() {
   const bundle=await build({entryPoints:[path.join(root,'src/app.mjs')],bundle:true,minify:true,format:'iife',write:false,legalComments:'inline'});
   const template=await fs.readFile(path.join(root,'templates/index.html'),'utf8');
   const css=await fs.readFile(path.join(root,'style.css'),'utf8');
   const output=path.join(root,'dist');
+  const targets=[
+    {name:'primary',config:'config.json',directory:''},
+    {name:'secondary',config:'config.spa.json',directory:'spa'}
+  ];
   await fs.rm(output,{recursive:true,force:true});await fs.mkdir(output);
-  await fs.writeFile(path.join(output,'index.html'),assemble(template,payload,css,bundle.outputFiles[0].text));
+  const built=[];
+  for(const target of targets) {
+    const payload=await fetchPayload(target.config);
+    const html=assemble(template,payload,css,bundle.outputFiles[0].text);
+    const directory=path.join(output,target.directory);
+    await fs.mkdir(directory,{recursive:true});
+    await fs.writeFile(path.join(directory,'index.html'),html);
+    built.push({name:target.name,html,payload,path:target.directory||'/'});
+  }
+  if(withoutPayload(built[0].html)!==withoutPayload(built[1].html))throw Error('Review widget instances must use identical UI code');
   await fs.writeFile(path.join(output,'404.html'),'<!doctype html><html lang="en"><meta charset="utf-8"><meta name="robots" content="noindex,nofollow"><title>Not found</title><p>This resource is not available.</p></html>');
-  // No reviews.json, customer images, config file, or historical versions are published.
-  console.log(JSON.stringify({build:'static-no-git-data',available:payload.ok,reviews:payload.reviews.length,htmlBytes:(await fs.stat(path.join(output,'index.html'))).size}));
+  console.log(JSON.stringify({build:'static-no-git-data',instances:built.map(x=>({name:x.name,path:x.path,available:x.payload.ok,reviews:x.payload.reviews.length,htmlBytes:Buffer.byteLength(x.html)}))}));
 }
 if(process.argv[1]&&path.resolve(process.argv[1])===fileURLToPath(import.meta.url)) {
   main().catch(()=>{console.error('Static review build failed; no customer data was logged.');process.exitCode=1;});

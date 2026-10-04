@@ -110,6 +110,13 @@ try{
  await fixturePage.locator('iframe').evaluate(el=>el.style.height='600px');await fixturePage.waitForTimeout(250);
  assert.ok(await frame.locator('.text').first().textContent()===tallText,'Frame resize shortened the review');
  await fixturePage.close();await page.close();
+ const secondaryPage=await browser.newPage({viewport:{width:390,height:844}});observe(secondaryPage);
+ const secondaryUrl=new URL('spa/',base).href;
+ await secondaryPage.goto(secondaryUrl,{waitUntil:'domcontentloaded'});
+ await secondaryPage.waitForFunction(()=>['true','unavailable'].includes(document.body.dataset.ready),{},{timeout:15000});
+ assert.equal(await secondaryPage.locator('.version').innerText(),expectedVersion);
+ assert.match(await secondaryPage.locator('meta[name="robots"]').getAttribute('content'),/noindex/);
+ await secondaryPage.close();
  assert.equal(dataRequests,0,'Browser made a live data request');assert.equal(scriptErrors,0,'Browser script error');
- console.log(JSON.stringify({result:'READABLE_EMBED_VERIFIED',available,liveDataRequests:dataRequests,version:expectedVersion,exactEmbedUrlVerified:true,checks}));
+ console.log(JSON.stringify({result:'READABLE_EMBED_VERIFIED',available,liveDataRequests:dataRequests,version:expectedVersion,exactEmbedUrlVerified:true,secondaryInstanceVerified:true,checks}));
 }finally{await browser.close();server?.kill();}
