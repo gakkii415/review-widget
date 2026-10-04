@@ -2,7 +2,7 @@ import {reviewExcerpt} from './excerpt.mjs';
 const $=id=>document.getElementById(id);
 const embedded=new URLSearchParams(location.search).has('embed');
 const framed=window.self!==window.top;
-let data=null,ordered=[],shown=0;
+let data=null,ordered=[],shown=0,userExpanded=false;
 const make=(tag,cls,text)=>{const el=document.createElement(tag);if(cls)el.className=cls;if(text!==undefined)el.textContent=text;return el;};
 const httpsUrl=value=>{try{const u=new URL(value);return u.protocol==='https:'?u.href:'';}catch{return '';}};
 const mapsUrl=value=>{const url=httpsUrl(value);return /^https:\/\/(www\.)?google\.com\/maps(?:[/?]|$)/i.test(url)?url:'https://www.google.com/maps';};
@@ -24,11 +24,11 @@ function card(review){
  if(photos.length){const grid=make('div','photos');for(const url of photos){const a=make('a');a.href=url;a.target='_blank';a.rel='noopener noreferrer';a.setAttribute('aria-label','Open review photo');const img=make('img');img.src=url;img.alt='Photo attached to this review';img.loading='lazy';img.width=180;img.height=180;a.append(img);grid.append(a);}el.append(grid);}
  return el;
 }
-function appendBatch(){
+function appendBatch(limit=5,capHeight=true){
  const list=$('reviews'),start=shown,startHeight=list.getBoundingClientRect().height;
- while(shown<ordered.length&&shown-start<5){
+ while(shown<ordered.length&&shown-start<limit){
   const el=card(ordered[shown]);list.append(el);
-  if(shown-start>=3&&list.getBoundingClientRect().height-startHeight>1000){el.remove();break;}
+  if(capHeight&&shown-start>=3&&list.getBoundingClientRect().height-startHeight>1000){el.remove();break;}
   shown++;
  }
  $('more').hidden=shown>=ordered.length;
@@ -41,34 +41,39 @@ function measureEmbed(){
  document.body.dataset.embedOverflow=String(framed&&required>window.innerHeight+1);
 }
 function renderEmbed(){
- $('reviews').replaceChildren();shown=0;$('status').hidden=true;
- $('more').hidden=true;$('moreLink').hidden=false;$('moreLink').href=reviewLink();
- // Height can limit EXTRA cards, never the first three or their readable text.
- const minimum=Math.min(ordered.length,3);
- for(let i=0;i<minimum;i++){$('reviews').append(card(ordered[i]));shown++;}
- const budget=framed?window.innerHeight:1600;
- while(shown<ordered.length&&shown<5){
-  const el=card(ordered[shown]);$('reviews').append(el);
-  if($('widget').getBoundingClientRect().height>budget-8){el.remove();break;}
-  shown++;
+ const preserve=userExpanded?shown:0;
+ $('reviews').replaceChildren();shown=0;$('status').hidden=true;$('more').hidden=true;
+ if(userExpanded){
+  const count=Math.min(preserve,ordered.length);
+  while(shown<count){$('reviews').append(card(ordered[shown]));shown++;}
+ }else{
+  // Height can limit EXTRA cards, never the first three or their readable text.
+  const minimum=Math.min(ordered.length,3);
+  for(let i=0;i<minimum;i++){$('reviews').append(card(ordered[i]));shown++;}
+  const budget=framed?window.innerHeight:1600;
+  while(shown<ordered.length&&shown<5){
+   const el=card(ordered[shown]);$('reviews').append(el);
+   if($('widget').getBoundingClientRect().height>budget-8){el.remove();break;}
+   shown++;
+  }
  }
+ $('more').hidden=shown>=ordered.length;
  document.body.dataset.shown=String(shown);measureEmbed();
 }
 function unavailable(){
- $('reviews').replaceChildren();$('summary').hidden=true;$('selectionNote').hidden=true;
- $('more').hidden=true;$('moreLink').hidden=true;$('status').hidden=false;
+ $('reviews').replaceChildren();$('summary').hidden=true;$('more').hidden=true;$('status').hidden=false;
  $('status').textContent='Please view the latest customer reviews on Google.';
- document.body.dataset.ready='unavailable';ordered=[];data=null;measureEmbed();
+ document.body.dataset.ready='unavailable';ordered=[];data=null;userExpanded=false;measureEmbed();
 }
 function render(){
  $('summary').hidden=false;$('summary').href=mapsUrl(data.googleMapsUrl);
  $('rating').textContent=data.averageRating.toFixed(1);$('total').textContent=data.totalReviewCount.toLocaleString('en-US');
  $('aggregateStars').style.setProperty('--fill',`${data.averageRating/5*100}%`);$('aggregateStars').setAttribute('aria-label',`${data.averageRating.toFixed(1)} out of 5 stars`);
  $('googleLink').href=mapsUrl(data.googleMapsUrl);
- $('selectionNote').hidden=false;$('status').hidden=true;
+ $('status').hidden=true;userExpanded=false;
  $('backLink').href=httpsUrl(data.siteUrl)||'#';$('backLink').hidden=embedded||!httpsUrl(data.siteUrl);
  document.body.dataset.eligible=String(ordered.length);
- if(!ordered.length){$('status').textContent='View all customer reviews on Google.';$('status').hidden=false;$('more').hidden=true;$('moreLink').hidden=true;return;}
+ if(!ordered.length){$('status').textContent='View all customer reviews on Google.';$('status').hidden=false;$('more').hidden=true;return;}
  if(embedded){renderEmbed();return;}
  $('reviews').replaceChildren();shown=0;appendBatch();
  const target=new URLSearchParams(location.search).get('review');
@@ -82,7 +87,7 @@ function boot(){
   ordered=data.reviews;render();document.body.dataset.ready='true';
  }catch{unavailable();}
 }
-$('more').addEventListener('click',()=>{const before=shown;appendBatch();const first=document.querySelectorAll('.review')[before];if(first)first.focus({preventScroll:true});});
+$('more').addEventListener('click',()=>{const before=shown;if(embedded)userExpanded=true;appendBatch(15,false);const first=document.querySelectorAll('.review')[before];if(first)first.focus({preventScroll:true});measureEmbed();});
 let resizeTimer;window.addEventListener('resize',()=>{if(embedded&&data){clearTimeout(resizeTimer);resizeTimer=setTimeout(renderEmbed,100);}});
 function checkExpiry(){if(data&&Date.now()>=Date.parse(data.expiresAt))unavailable();}
 window.addEventListener('pageshow',checkExpiry);document.addEventListener('visibilitychange',checkExpiry);setInterval(checkExpiry,60000);

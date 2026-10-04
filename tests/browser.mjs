@@ -47,14 +47,23 @@ async function checkFrame(page,url,width,height,originals){
  }else{
   assert.ok(await frame.locator('.review').evaluateAll(es=>es.slice(0,3).every(c=>c.getBoundingClientRect().bottom<=innerHeight+1)),'Three cards must be visible when frame is tall enough');
  }
- // Verify the third card and final action can be reached, not just that nodes exist.
+ // Verify the third card and View More can be reached, then append exactly 15 reviews when available.
  await frame.locator('.review').nth(2).scrollIntoViewIfNeeded();
- await frame.locator('#moreLink').scrollIntoViewIfNeeded();
- const button=await frame.locator('#moreLink').evaluate(el=>{const b=el.getBoundingClientRect();return {width:b.width,height:b.height,top:b.top,bottom:b.bottom,viewport:innerHeight};});
- assert.ok(button.width>=118&&button.width<=155&&button.height<=40,'Compact button regressed');
- assert.ok(button.top>=-1&&button.bottom<=button.viewport+1,'View More is unreachable');
- const href=await frame.locator('#moreLink').getAttribute('href');assert.ok(!href.includes('embed'));
- checks.push({width,height,count,requiredHeight:Math.ceil(dimensions.required),firstPreviewCharacters:rendered[0].chars,scrollFallback:dimensions.required>height+1,allThreeReachable:true});
+ const horizontal=await frame.locator('#widget').evaluate(el=>{const b=el.getBoundingClientRect();return {left:b.left,width:b.width,viewport:innerWidth};});
+ assert.ok(Math.abs(horizontal.left)<=1&&Math.abs(horizontal.width-horizontal.viewport)<=1,'Embedded widget must use zero outer horizontal spacing');
+ const more=frame.locator('#more');let addedOnViewMore=0;
+ if(originals.size>count){
+  assert.equal(await more.isVisible(),true,'View More should be visible when more reviews remain');
+  await more.scrollIntoViewIfNeeded();
+  const button=await more.evaluate(el=>{const b=el.getBoundingClientRect();return {width:b.width,height:b.height,top:b.top,bottom:b.bottom,viewport:innerHeight};});
+  assert.ok(button.width>=118&&button.width<=155&&button.height<=40,'Compact button regressed');
+  assert.ok(button.top>=-1&&button.bottom<=button.viewport+1,'View More is unreachable');
+  await more.click();
+  const after=await frame.locator('.review').count();
+  addedOnViewMore=after-count;
+  assert.equal(addedOnViewMore,Math.min(15,originals.size-count),'View More must append 15 reviews per click');
+ }else assert.equal(await more.isVisible(),false,'View More should be hidden when no reviews remain');
+ checks.push({width,height,count,requiredHeight:Math.ceil(dimensions.required),firstPreviewCharacters:rendered[0].chars,scrollFallback:dimensions.required>height+1,allThreeReachable:true,addedOnViewMore});
 }
 try{
  if(local)await new Promise(r=>setTimeout(r,1000));
@@ -63,6 +72,7 @@ try{
  const response=await page.goto(base,{waitUntil:'domcontentloaded'});
  await page.waitForFunction(()=>['true','unavailable'].includes(document.body.dataset.ready),{},{timeout:15000});
  assert.equal(await page.locator('.version').innerText(),expectedVersion);
+ assert.equal(await page.locator('#selectionNote').count(),0,'Selection note must not be rendered');
  assert.match(await page.locator('meta[name="robots"]').getAttribute('content'),/noindex/);
  assert.equal(await page.locator('#googleLink').isVisible(),false,'View on Google must stay hidden');
  const html=await response.text();
@@ -71,7 +81,7 @@ try{
  if(available){
   const eligible=Number(await page.locator('body').getAttribute('data-eligible'));
   const before=await page.locator('.review').count();assert.ok(before>=Math.min(3,eligible)&&before<=5);
-  if(await page.locator('#more').isVisible()){await page.locator('#more').click();const added=await page.locator('.review').count()-before;assert.ok(added>=Math.min(3,eligible-before)&&added<=5);}
+  if(await page.locator('#more').isVisible()){await page.locator('#more').click();const added=await page.locator('.review').count()-before;assert.equal(added,Math.min(15,eligible-before));}
   const dates=await page.locator('.review time').evaluateAll(es=>es.map(e=>Date.parse(e.dateTime)));
   assert.ok(dates.every((d,i)=>i===0||dates[i-1]>=d),'Chronological ordering failed');
   const ids=await page.locator('.review').evaluateAll(es=>es.map(e=>e.dataset.reviewId));assert.equal(ids.length,new Set(ids).size);
@@ -86,7 +96,7 @@ try{
  assert.equal(await page.locator('.version').innerText(),expectedVersion);
  // Synthetic long/photo-heavy reviews, isolated in memory; no customer snapshots/screenshots in artifacts.
  const text='I visited the studio for my first tattoo while travelling in Japan. The artist explained the design clearly in English, listened carefully to my ideas, and helped me choose the placement. The room was clean and private, and I felt comfortable throughout the appointment. I am very happy with the finished tattoo and appreciated the clear aftercare instructions. '+'I would recommend this studio to other travellers. '.repeat(9);
- const fixture={ok:true,averageRating:5,totalReviewCount:3,googleMapsUrl:'https://www.google.com/maps',expiresAt:new Date(Date.now()+3600000).toISOString(),reviews:Array.from({length:3},(_,i)=>({id:'fixture-'+i,reviewerName:'Test reviewer',rating:5,createTime:'2026-09-01T00:00:00Z',text,photos:['https://photo.example.test/sample.svg']}))};
+ const fixture={ok:true,averageRating:5,totalReviewCount:20,googleMapsUrl:'https://www.google.com/maps',expiresAt:new Date(Date.now()+3600000).toISOString(),reviews:Array.from({length:20},(_,i)=>({id:'fixture-'+i,reviewerName:'Test reviewer',rating:5,createTime:new Date(Date.UTC(2026,8,20-i)).toISOString(),text,photos:['https://photo.example.test/sample.svg']}))};
  const fixtureHtml=builtHtml.replace(/(<script id="review-data" type="application\/json">)[\s\S]*?(<\/script>)/,(_,a,b)=>a+JSON.stringify(fixture)+b);
  const fixturePage=await browser.newPage();observe(fixturePage);
  await fixturePage.route('https://widget.example.test/**',r=>r.fulfill({contentType:'text/html',body:fixtureHtml}));
