@@ -21,7 +21,7 @@ async function checkFrame(page,url,width,height,originals){
  const frame=page.frameLocator('iframe');
  await frame.locator('body[data-ready="true"]').waitFor({timeout:15000});
  assert.equal(await frame.locator('.version').innerText(),expectedVersion);
- const count=await frame.locator('.review').count();assert.ok(count>=3&&count<=5,'Minimum card count failed');
+ const count=await frame.locator('.review').count();assert.equal(count,Math.min(5,originals.size),'Initial review count must be five when available');
  const rendered=await frame.locator('.review').evaluateAll(es=>es.slice(0,3).map(c=>{
   const t=c.querySelector('.text'),p=c.querySelector('.photos'),r=t.getBoundingClientRect();
   return {id:c.dataset.reviewId,text:t.textContent,chars:t.textContent.length,width:r.width,height:r.height,
@@ -80,7 +80,7 @@ try{
  const available=await page.locator('body').getAttribute('data-ready')==='true';
  if(available){
   const eligible=Number(await page.locator('body').getAttribute('data-eligible'));
-  const before=await page.locator('.review').count();assert.ok(before>=Math.min(3,eligible)&&before<=5);
+  const before=await page.locator('.review').count();assert.equal(before,Math.min(5,eligible));
   if(await page.locator('#more').isVisible()){await page.locator('#more').click();const added=await page.locator('.review').count()-before;assert.equal(added,Math.min(15,eligible-before));}
   const dates=await page.locator('.review time').evaluateAll(es=>es.map(e=>Date.parse(e.dateTime)));
   assert.ok(dates.every((d,i)=>i===0||dates[i-1]>=d),'Chronological ordering failed');

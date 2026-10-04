@@ -47,15 +47,8 @@ function renderEmbed(){
   const count=Math.min(preserve,ordered.length);
   while(shown<count){$('reviews').append(card(ordered[shown]));shown++;}
  }else{
-  // Height can limit EXTRA cards, never the first three or their readable text.
-  const minimum=Math.min(ordered.length,3);
-  for(let i=0;i<minimum;i++){$('reviews').append(card(ordered[i]));shown++;}
-  const budget=framed?window.innerHeight:1600;
-  while(shown<ordered.length&&shown<5){
-   const el=card(ordered[shown]);$('reviews').append(el);
-   if($('widget').getBoundingClientRect().height>budget-8){el.remove();break;}
-   shown++;
-  }
+  const initial=Math.min(ordered.length,5);
+  while(shown<initial){$('reviews').append(card(ordered[shown]));shown++;}
  }
  $('more').hidden=shown>=ordered.length;
  document.body.dataset.shown=String(shown);measureEmbed();
@@ -75,7 +68,7 @@ function render(){
  document.body.dataset.eligible=String(ordered.length);
  if(!ordered.length){$('status').textContent='View all customer reviews on Google.';$('status').hidden=false;$('more').hidden=true;return;}
  if(embedded){renderEmbed();return;}
- $('reviews').replaceChildren();shown=0;appendBatch();
+ $('reviews').replaceChildren();shown=0;appendBatch(5,false);
  const target=new URLSearchParams(location.search).get('review');
  if(target&&ordered.some(r=>r.id===target)){while(shown<ordered.length&&!$('review-'+target))appendBatch();const el=$('review-'+target);if(el){el.focus({preventScroll:true});el.scrollIntoView({block:'start'});}}
 }
