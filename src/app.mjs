@@ -60,7 +60,9 @@ function unavailable(){
 }
 function render(){
  $('summary').hidden=false;$('summary').href=mapsUrl(data.googleMapsUrl);
- $('rating').textContent=data.averageRating.toFixed(1);$('total').textContent=data.totalReviewCount.toLocaleString('en-US');
+ $('rating').textContent=data.averageRating.toFixed(1);
+ $('total').hidden=data.totalReviewCount<40;
+ $('total').textContent=$('total').hidden?'':data.totalReviewCount.toLocaleString('en-US');
  $('aggregateStars').style.setProperty('--fill',`${data.averageRating/5*100}%`);$('aggregateStars').setAttribute('aria-label',`${data.averageRating.toFixed(1)} out of 5 stars`);
  $('googleLink').href=mapsUrl(data.googleMapsUrl);
  $('status').hidden=true;userExpanded=false;

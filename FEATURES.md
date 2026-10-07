@@ -53,4 +53,4 @@
 - Expansion Set:
 - Deferred or rejected items / reasons:
 - Important flows / states / data decisions:
-- Durable feature decisions:
+- Durable feature decisions: Google全体のレビュー総数が40件未満なら件数を非表示にし、40件以上なら表示する。表示対象に絞ったレビュー数では判定しない。評価・星・Google表記・レビュー本文は引き続き表示する。全埋め込み先で同じルールを使う。
