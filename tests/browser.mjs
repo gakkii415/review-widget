@@ -101,14 +101,18 @@ try{
  const fixturePage=await browser.newPage();observe(fixturePage);
  await fixturePage.route('https://widget.example.test/**',r=>r.fulfill({contentType:'text/html',body:fixtureHtml}));
  await fixturePage.route('https://photo.example.test/**',r=>r.fulfill({contentType:'image/svg+xml',body:'<svg xmlns="http://www.w3.org/2000/svg" width="180" height="180"><rect width="180" height="180" fill="#ddd"/></svg>'}));
- await fixturePage.goto('https://widget.example.test/');
+ await fixturePage.route('https://www.gstatic.com/**',()=>{});
+ await fixturePage.goto('https://widget.example.test/',{waitUntil:'load',timeout:5000});
+ assert.equal(await fixturePage.locator('body').getAttribute('data-ready'),'true','External images must not delay iframe load');
  const originals=new Map(fixture.reviews.map(r=>[r.id,r.text]));
  for(const [w,h] of [[320,600],[390,2800]])await checkFrame(fixturePage,'https://widget.example.test/',w,h,originals);
  // Text and photos do not change when the same iframe gets more vertical space.
  const frame=fixturePage.frameLocator('iframe');
  const tallText=await frame.locator('.text').first().textContent();
+ const firstCard=await frame.locator('.review').first().elementHandle();
  await fixturePage.locator('iframe').evaluate(el=>el.style.height='600px');await fixturePage.waitForTimeout(250);
  assert.ok(await frame.locator('.text').first().textContent()===tallText,'Frame resize shortened the review');
+ assert.ok(await firstCard.evaluate(el=>el.isConnected),'Resizing must not rebuild already visible reviews');
  await fixturePage.close();await page.close();
  const secondaryPage=await browser.newPage({viewport:{width:390,height:844}});observe(secondaryPage);
  const secondaryUrl=new URL('spa/',base).href;

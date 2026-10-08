@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
-import {snapshot,safeJson,assemble} from '../scripts/build.mjs';
+import {snapshot,safeJson,assemble,fetchPayload} from '../scripts/build.mjs';
 const now=Date.parse('2026-09-22T00:00:00Z');
 const fixture=(id,name)=>({id,reviewerName:name,text:'This is an English test fixture. The artist explained the design and the studio was very clean. I was comfortable throughout the appointment.',rating:5,createTime:'2026-09-01T00:00:00Z'});
 const raw=reviews=>({ok:true,averageRating:5,totalReviewCount:reviews.length,generatedAt:new Date(now).toISOString(),reviews});
@@ -25,4 +25,23 @@ test('Search exclusion and one-day schedule are required; no git writer exists',
  assert.match(workflow,/15 18 \* \* \*/);assert.doesNotMatch(workflow,/git (add|commit|push)/);
  assert.ok(!fs.existsSync('.github/workflows/refresh-reviews.yml'));
  assert.match(fs.readFileSync('.gitignore','utf8'),/\/dist\//);
+});
+test('A temporary source outage cannot publish an empty replacement',async t=>{
+ let attempts=0;
+ t.mock.method(globalThis,'fetch',async()=>{attempts++;throw Error('Temporary outage');});
+ t.mock.method(globalThis,'setTimeout',fn=>{queueMicrotask(fn);return 0;});
+ await assert.rejects(fetchPayload({endpoint:'https://script.google.com/macros/s/test/exec'}),/keeping the current deployment/);
+ assert.equal(attempts,4);
+ assert.equal((await fetchPayload({pending:true})).ok,false);
+ assert.equal(attempts,4,'Pending accounts must not fetch');
+});
+test('A retry can recover and publish a fresh snapshot',async t=>{
+ let attempts=0;
+ t.mock.method(globalThis,'fetch',async()=>{
+  if(++attempts===1)throw Error('Temporary outage');
+  return {ok:true,json:async()=>({...raw([fixture('current','Test reviewer')]),generatedAt:new Date().toISOString()})};
+ });
+ t.mock.method(globalThis,'setTimeout',fn=>{queueMicrotask(fn);return 0;});
+ assert.equal((await fetchPayload({endpoint:'https://script.google.com/macros/s/test/exec'})).ok,true);
+ assert.equal(attempts,2);
 });

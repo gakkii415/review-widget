@@ -37,8 +37,7 @@ export function assemble(template,payload,css,js) {
     .replace('<!-- REVIEW_DATA -->',()=>'<script id="review-data" type="application/json">'+safeJson(payload)+'</script>')
     .replace('<!-- REVIEW_APP -->',()=>'<script>'+js+'</script>');
 }
-async function fetchPayload(configFile) {
-  const config=JSON.parse(await fs.readFile(path.join(root,configFile),'utf8'));
+export async function fetchPayload(config) {
   const rawEndpoint=String(config.endpoint||'').trim();
   if(!rawEndpoint) {
     if(config.pending===true) return {ok:false,reviews:[],snapshotUpdatedAt:new Date().toISOString()};
@@ -54,7 +53,7 @@ async function fetchPayload(configFile) {
       payload=snapshot(await response.json());break;
     }catch{if(attempt<3)await new Promise(resolve=>setTimeout(resolve,3000));}
   }
-  if(!payload){payload={ok:false,reviews:[],snapshotUpdatedAt:new Date().toISOString()};console.warn('::warning::Review source unavailable; publishing a data-free fallback.');}
+  if(!payload)throw Error('Review source unavailable; keeping the current deployment.');
   return payload;
 }
 function withoutPayload(html) {
@@ -73,7 +72,7 @@ async function main() {
   await fs.rm(output,{recursive:true,force:true});await fs.mkdir(output);
   const built=[];
   for(const target of targets) {
-    const payload=await fetchPayload(target.config);
+    const payload=await fetchPayload(JSON.parse(await fs.readFile(path.join(root,target.config),'utf8')));
     const html=assemble(template,payload,css,bundle.outputFiles[0].text);
     const directory=path.join(output,target.directory);
     await fs.mkdir(directory,{recursive:true});

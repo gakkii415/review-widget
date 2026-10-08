@@ -83,7 +83,7 @@ function boot(){
  }catch{unavailable();}
 }
 $('more').addEventListener('click',()=>{const before=shown;if(embedded)userExpanded=true;appendBatch(15,false);const first=document.querySelectorAll('.review')[before];if(first)first.focus({preventScroll:true});measureEmbed();});
-let resizeTimer;window.addEventListener('resize',()=>{if(embedded&&data){clearTimeout(resizeTimer);resizeTimer=setTimeout(renderEmbed,100);}});
+window.addEventListener('resize',measureEmbed);
 function checkExpiry(){if(data&&Date.now()>=Date.parse(data.expiresAt))unavailable();}
 window.addEventListener('pageshow',checkExpiry);document.addEventListener('visibilitychange',checkExpiry);setInterval(checkExpiry,60000);
 boot();
