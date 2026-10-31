@@ -16,7 +16,9 @@ concurrency:
   cancel-in-progress: false
 jobs:
   release:
-    runs-on: ubuntu-latest
+    # Playwright 1.55.1 supports Ubuntu 24.04; keep the OS stable across daily runs.
+    # Upgrade this runner and Playwright together after browser verification.
+    runs-on: ubuntu-24.04
     timeout-minutes: 15
     environment:
       name: github-pages
