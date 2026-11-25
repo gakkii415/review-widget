@@ -53,6 +53,20 @@ jobs:
         with:
           path: dist
           retention-days: 1
+      - name: Wait for the exact uploaded Pages artifact
+        uses: actions/github-script@v7
+        env:
+          PAGES_ARTIFACT_ID: ${{ steps.artifact.outputs.artifact_id }}
+        with:
+          script: |
+            const {DefaultArtifactClient} = require('@actions/artifact');
+            const {waitForPagesArtifact} = require('./scripts/wait-pages-artifact.cjs');
+            const client = new DefaultArtifactClient();
+            await waitForPagesArtifact({
+              artifactId: process.env.PAGES_ARTIFACT_ID,
+              listArtifacts: () => client.listArtifacts()
+            });
+            core.info('Exact uploaded Pages artifact is available for deployment');
       - name: Publish current snapshot
         id: deployment
         uses: actions/deploy-pages@v4
