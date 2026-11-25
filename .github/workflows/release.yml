@@ -69,7 +69,21 @@ jobs:
             core.info('Exact uploaded Pages artifact is available for deployment');
       - name: Publish current snapshot
         id: deployment
-        uses: actions/deploy-pages@v4
+        uses: actions/github-script@v7
+        env:
+          PAGES_ARTIFACT_ID: ${{ steps.artifact.outputs.artifact_id }}
+        with:
+          retries: 0
+          script: |
+            const {publishPages} = require('./scripts/wait-pages-artifact.cjs');
+            const pageUrl = await publishPages({
+              request: (...args) => github.request(...args),
+              getIDToken: () => core.getIDToken(),
+              repository: process.env.GITHUB_REPOSITORY,
+              sha: context.sha,
+              artifactId: process.env.PAGES_ARTIFACT_ID
+            });
+            core.setOutput('page_url', pageUrl);
       - name: Verify published page
         env:
           BASE_URL: ${{ steps.deployment.outputs.page_url }}
