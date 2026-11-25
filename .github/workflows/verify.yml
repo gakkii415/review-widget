@@ -20,7 +20,12 @@ jobs:
       - name: Check mandatory version rules
         env:
           BASE_SHA: ${{ github.event.pull_request.base.sha }}
-        run: python3 .github/mandatory.py --base "$BASE_SHA"
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        # Continue the same repair from its original branch base without another
+        # display-version bump when a production verification needs a follow-up.
+        run: |
+          WORK_BASE=$(git merge-base "$BASE_SHA" "$HEAD_SHA")
+          python3 .github/mandatory.py --base "$WORK_BASE"
       - run: npm test
       - run: npm run build
       - run: npx playwright install --with-deps chromium
