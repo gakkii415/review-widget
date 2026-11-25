@@ -14,7 +14,7 @@ test('Publish exactly the uploaded ID once and require successful status',async(
  const url=await publishPages({...publishOptions,request:async(route,args)=>{
   calls.push(route);
   if(route==='POST /repos/{owner}/{repo}/pages/deployments'){
-   assert.equal(args.artifact_id,'123');assert.equal(args.pages_build_version,'abc');assert.equal(args.oidc_token,'fixture-token');
+   assert.equal(args.artifact_id,123);assert.equal(args.pages_build_version,'abc');assert.equal(args.oidc_token,'fixture-token');
    return {data:{id:'deployment',page_url:'https://owner.github.io/repo/'}};
   }
   return {data:{status:++polls===1?'queued':'succeed'}};

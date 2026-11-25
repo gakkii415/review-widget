@@ -20,12 +20,12 @@ async function waitForPagesArtifact({listArtifacts, artifactId, attempts = 12,
 // second name lookup by a different bundled client after successful verification.
 async function publishPages({request, getIDToken, repository, sha, artifactId,
   sleep = ms => new Promise(resolve => setTimeout(resolve, ms)), maxPolls = 120}) {
-  if (!/^[1-9][0-9]*$/.test(String(artifactId))) throw Error('Missing uploaded Pages artifact ID');
+  if (!/^[1-9][0-9]*$/.test(String(artifactId)) || !Number.isSafeInteger(Number(artifactId))) throw Error('Missing uploaded Pages artifact ID');
   const [owner, repo] = repository.split('/');
   const common = {owner, repo, request: {timeout: 15000}};
   // Never retry creation: an uncertain response must not create duplicates.
   const {data: deployment} = await request('POST /repos/{owner}/{repo}/pages/deployments', {
-    ...common, artifact_id: String(artifactId), pages_build_version: sha,
+    ...common, artifact_id: Number(artifactId), pages_build_version: sha,
     oidc_token: await getIDToken()
   });
   const deploymentId = deployment.id || deployment.status_url?.split('/').pop();
